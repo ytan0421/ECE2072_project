@@ -37,14 +37,14 @@ module components_tb;
 	endtask
 	 
 	 // tick fsm task
-	 reg enable, rst, tick_clk;
+	 reg enable, tick_rst, tick_clk;
 	 wire[3:0] tick;
 	 integer tick_tests = 0;
 	 integer tick_errors = 0;
 	 
 	 tick_FSM tick_FSM_test(
 		.enable(enable),
-		.rst(rst),
+		.rst(tick_rst),
 		.clk(tick_clk),
 		.tick(tick)
 	 );
@@ -53,11 +53,11 @@ module components_tb;
 		input [3:0] expected;
 		begin
 			if (tick !== expected) begin
-            $display("FAIL [Tick FSM]: rst = %b, enable = %b, expected = %b, got = %b", rst, enable, expected, tick);
+            $display("FAIL [Tick FSM]: rst = %b, enable = %b, expected = %b, got = %b", tick_rst, enable, expected, tick);
 				tick_errors = tick_errors + 1;
 			end
 			else begin
-				$display("PASS [Tick FSM]: rst = %b, enable = %b, expected = %b, got = %b", rst, enable, expected, tick);
+				$display("PASS [Tick FSM]: rst = %b, enable = %b, expected = %b, got = %b", tick_rst, enable, expected, tick);
 			end
 			tick_tests = tick_tests + 1;
 		end
@@ -91,25 +91,26 @@ module components_tb;
 		 begin
 		 
 			case (sel)
-				4'b0000: expected = SignExtDin;
-				4'b0001: expected = R0;
-				4'b0010: expected = R1;
-				4'b0011: expected = R2;
-				4'b0100: expected = R3;
-				4'b0101: expected = R4;
-				4'b0110: expected = R5;
-				4'b0111: expected = R6;
-				4'b1000: expected = R7;
-				4'b1001: expected = G;
+				4'b0000: expected = R0;
+				4'b0001: expected = R1;
+				4'b0010: expected = R2;
+				4'b0011: expected = R3;
+				4'b0100: expected = R4;
+				4'b0101: expected = R5;
+				4'b0110: expected = R6;
+				4'b0111: expected = R7;
+				4'b1000: expected = G;
+				4'b1001: expected = SignExtDin;
 				
 				default: expected = 16'b0;
 			endcase
+
 			if (Bus !== expected) begin
 				$display("FAIL [Multiplexer]: expected = %b, got = %b", expected, Bus);
 				multiplexer_errors = multiplexer_errors + 1;
 			end
 			else begin
-			$display("PASS [Multiplexer]: expected = %b, got = %b", expected, Bus);
+				$display("PASS [Multiplexer]: expected = %b, got = %b", expected, Bus);
 			end
 			multiplexer_tests = multiplexer_tests + 1;
 		 end
@@ -166,29 +167,31 @@ module components_tb;
 	 reg r_in;
 	 reg reg_clk;
 	 wire [15:0] Q;
-	 reg rst;
+	 reg reg_rst;
 	 integer register_tests = 0, register_errors = 0;
+
 	 register_n register_test(
 		 .data_in(data_in),
 		 .r_in(r_in),
 		 .clk(reg_clk),
 		 .Q(Q),
-		 .rst(rst)
+		 .rst(reg_rst)
 	 );
 	 
 	 task check_register;
-		reg[15:0] expected;
+		input[15:0] expected;
 		begin
 			if (Q !== expected) begin
-				$display("FAIL [Register]: data_in = %b, r_in = %b, rst = %b, expected = %b, got = %b", data_in, r_in, rst, expected, Q);
+				$display("FAIL [Register]: data_in = %b, r_in = %b, rst = %b, expected = %b, got = %b", data_in, r_in, reg_rst, expected, Q);
 				register_errors = register_errors + 1;
 			end
 			else begin
-				$display("PASS [Register]: data_in = %b, r_in = %b, rst = %b, expected = %b, got = %b", data_in, r_in, rst, expected, Q);
+				$display("PASS [Register]: data_in = %b, r_in = %b, rst = %b, expected = %b, got = %b", data_in, r_in, reg_rst, expected, Q);
 			end
 			register_tests = register_tests + 1;
 		end
 	 endtask
+
 	
 	initial begin
 		tick_clk = 0;
@@ -204,6 +207,7 @@ module components_tb;
 	 end
 	 
 	 initial begin
+
 		 // Sign extender tests
 		 in = 9'b000000000;
 		 #1;
@@ -220,13 +224,14 @@ module components_tb;
 		 in = 9'b100000000;
 		 #1;
 		 check_sign_extend;
+
 		 // Tick FSM tests
-		 rst = 1;
+		 tick_rst = 1;
 		 enable = 0;
 		 #10;
 		 check_tick(4'b0001);
 		 
-		 rst = 0;
+		 tick_rst = 0;
 		 enable = 1;
 		 #10;
 		 check_tick(4'b0010);
@@ -237,11 +242,12 @@ module components_tb;
 		 #10;
 		 check_tick(4'b0001);
 		 
-		 rst = 0;
+		 tick_rst = 0;
 		 enable = 0;
 		 #10;
 		 check_tick(4'b0001);
 		 
+
 		 // Multiplexer tests
 		 SignExtDin = 16'd0; R0 = 16'd1; R1 = 16'd2; R2 = 16'd3; R3 = 16'd4; R4 = 16'd5; R5 = 16'd6; R6 = 16'd7; R7 = 16'd8; G = 16'd9; 
 		 sel = 4'b0000;
@@ -283,6 +289,7 @@ module components_tb;
 		 sel = 4'b1001;
 		 #1;
 		 check_multiplexer;
+
 		 // ALU tests
 		 
 		 // multiply
@@ -299,12 +306,14 @@ module components_tb;
 		 input_b = 16'd3;
 		 #1;
 		 check_alu;
+
 		 // +, -
 		 alu_op = 3'b000;
 		 input_a = 16'd5;
 		 input_b = -16'd3;
 		 #1;
 		 check_alu;
+
 		 // -, -
 		 alu_op = 3'b000;
 		 input_a = -16'd5;
@@ -319,18 +328,21 @@ module components_tb;
 		 input_b = 16'd3;
 		 #1;
 		 check_alu;
+
 		 // -, +
 		 alu_op = 3'b001;
 		 input_a = -16'd5;
 		 input_b = 16'd3;
 		 #1;
 		 check_alu;
+
 		 // +, -
 		 alu_op = 3'b001;
 		 input_a = 16'd5;
 		 input_b = -16'd3;
 		 #1;
 		 check_alu;
+
 		 // -, -
 		 alu_op = 3'b001;
 		 input_a = -16'd5;
@@ -345,18 +357,21 @@ module components_tb;
 		 input_b = 16'd3;
 		 #1;
 		 check_alu;
+
 		 // -, +
 		 alu_op = 3'b010;
 		 input_a = -16'd5;
 		 input_b = 16'd3;
 		 #1;
 		 check_alu;
+
 		 // +, -
 		 alu_op = 3'b010;
 		 input_a = 16'd5;
 		 input_b = -16'd3;
 		 #1;
 		 check_alu;
+
 		 // -, -
 		 alu_op = 3'b010;
 		 input_a = -16'd5;
@@ -395,19 +410,19 @@ module components_tb;
 	
 		 // Register tests
 		 // check reset
-		 rst = 1;
+		 reg_rst = 1;
 		 r_in = 0;
 		 #10;
 		 check_register(16'd0);
 		 
 		 // check reset priority
-		 rst = 1;
+		 reg_rst = 1;
 		 r_in = 1;
 		 #10;
 		 check_register(16'd0);
 		 
 		 // check if the data load correctly
-		 rst = 0;
+		 reg_rst = 0;
 		 r_in = 1;
 		 data_in = 16'd35;
 		 #10;
@@ -417,7 +432,7 @@ module components_tb;
 		 check_register(data_in);
 		 
 		 // check hold
-		 rst = 0;
+		 reg_rst = 0;
 		 r_in = 0;
 		 #10;
 		 check_register(data_in);
