@@ -75,7 +75,6 @@ module proc_tb;
 		SW = 9'b111_001_000;
 		// Tick 1: Read in input value
 		@(posedge clk);
-	
 		SW = 9'b000_000_101;
 		// Tick 2: immediate value overwrites Rx
 		@(posedge clk);
@@ -157,6 +156,7 @@ module proc_tb;
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == 16'd3) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -190,7 +190,6 @@ module proc_tb;
 		SW = 9'b111_010_000;
 		// Tick 1: Read in input value
 		@(posedge clk);
-	
 		SW = 9'b111_111_101;
 		// Tick 2: immediate value overwrites Rx
 		@(posedge clk);
@@ -198,13 +197,14 @@ module proc_tb;
 		@(posedge clk);
 		
 		$display("R1 = %d, R2 = %d", R1, R2);
-		
+	
 		SW = 9'b001_001_010;
 		@(posedge clk);
 		@(posedge clk);
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == 16'd2) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -251,6 +251,7 @@ module proc_tb;
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == -16'd4) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -297,6 +298,7 @@ module proc_tb;
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == 16'd5) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -343,6 +345,7 @@ module proc_tb;
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == -16'd6) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -389,6 +392,7 @@ module proc_tb;
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == -16'd36) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -422,6 +426,7 @@ module proc_tb;
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == 16'd10) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -455,6 +460,7 @@ module proc_tb;
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == 16'd8) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -488,6 +494,7 @@ module proc_tb;
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == -16'd46) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -521,6 +528,7 @@ module proc_tb;
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == 16'd4) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -541,7 +549,7 @@ module proc_tb;
 		// MOVI R1 = -32
 		SW = 9'b111_001_000;
 		@(posedge clk);
-		SW = 9'b111_110_000;
+		SW = 9'b111_100_000;
 		@(posedge clk);
 		@(posedge clk);
 		@(posedge clk);
@@ -554,6 +562,7 @@ module proc_tb;
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == -16'd22) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -587,6 +596,7 @@ module proc_tb;
 		@(posedge clk); 
 		@(posedge clk);
 
+		#1;
 		if (R1 == -16'd15) begin
 			 $display("PASS: R1 = %d", R1);
 			 pass_count = pass_count + 1;
@@ -627,6 +637,7 @@ module proc_tb;
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == 16'd12) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -667,6 +678,7 @@ module proc_tb;
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == -16'd1) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -707,6 +719,7 @@ module proc_tb;
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == 16'd30) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -747,6 +760,7 @@ module proc_tb;
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == -16'd34) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -787,6 +801,7 @@ module proc_tb;
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == 16'd22) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -807,7 +822,7 @@ module proc_tb;
 		// MOVI R1 = -30
 		SW = 9'b111_001_000;
 		@(posedge clk);
-		SW = 9'b111_000_010;
+		SW = 9'b111_100_010;
 		@(posedge clk);
 		@(posedge clk);
 		@(posedge clk);
@@ -827,6 +842,7 @@ module proc_tb;
 		@(posedge clk);
 		@(posedge clk);
 		
+		#1;
 		if (R1 == -16'd23) begin
 			$display("PASS: R1 = %d", R1);
 			pass_count = pass_count + 1;
@@ -849,7 +865,7 @@ module proc_tb;
 		end
 		else begin
 			$display("Failed Tests:");
-			for (i = 1; i < test_count + 1; i = i + 1) begin
+			for (i = 1; i <= 20; i = i + 1) begin
 				if (test_result[i] == 0) begin
 					$display("Test[%d] FAIL", i);
 				end
