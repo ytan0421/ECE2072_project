@@ -7,23 +7,24 @@ Please enter your student ID: 36445444
 
 */
 
-module proc_extension(clk, rst, din, bus, R0, R1, R2, R3, R4, R5, R6, R7, display);
+module proc_extension(clk, rst, din, enable, bus, R0, R1, R2, R3, R4, R5, R6, R7, display, tick);
 
     // Note: The skeleton you are provided with includes output ports to output the values of the internal registers R0 - R7, for the purpose of test benching. When instantiating the processor to program your DE10-lite, you can leave these ports unused.
 
     // TODO: Declare inputs and outputs:
 		input clk, rst;
 		input [8:0] din;
-		output reg [15:0] R0, R1, R2, R3, R4, R5, R6, R7;
+		input enable;
+		output [15:0] R0, R1, R2, R3, R4, R5, R6, R7;
 		output [15:0] bus, display;
+		output [3:0] tick;         // exported for the HEX5 tick display (FAQ 7)
 
     // TODO: declare wires:
     reg R0_in, R1_in, R2_in, R3_in, R4_in, R5_in, R6_in, R7_in, A_in, G_in, IR_in, hex_in;
 	 reg [2:0] alu_op;
 	 reg [3:0] bus_control;
-	 reg [3:0] tick;
-	 reg [15:0] A_out, G_out, alu_out;
-	 reg [8:0] IR_out;
+	 wire [15:0] A_out, G_out, alu_out;
+	 wire [8:0] IR_out;
 
     // TODO: instantiate registers:
     register_n #(.N(16)) reg_R0(
@@ -150,7 +151,7 @@ module proc_extension(clk, rst, din, bus, R0, R1, R2, R3, R4, R5, R6, R7, displa
     tick_FSM fsm(
 		.rst(rst),
 		.clk(clk),
-		.enable(1'b1),
+		.enable(enable),
 		.tick(tick)
 		);
     
@@ -205,7 +206,7 @@ module proc_extension(clk, rst, din, bus, R0, R1, R2, R3, R4, R5, R6, R7, displa
 								A_in = 1'b1;
 						  end
 						  3'b101: begin
-								bus_control = {1'b0,IR_out[5:3]};
+								bus_control = 4'b1001;
 								A_in = 1'b1;
 						  end
 						  3'b111: begin
@@ -258,7 +259,7 @@ module proc_extension(clk, rst, din, bus, R0, R1, R2, R3, R4, R5, R6, R7, displa
 								G_in = 1'b1;
 						  end
 						  3'b101: begin
-								bus_control = 4'b1001;
+								bus_control = {1'b0,IR_out[5:3]};
 								alu_op = 3'b011;
 								G_in = 1'b1;
 						  end

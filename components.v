@@ -136,8 +136,15 @@ module ALU (input_a, input_b, alu_op, result);
 					result = input_b << $signed(input_a);
 				else
 					result = $signed(input_b) >>> (-$signed(input_a));
-				default:
-					result = 16'b0;
+			3'b100:
+				// Task 4 addition (unused slot in Table 3): input_a shifted by input_b.
+				// Lets ssi load Rx into A first and read the immediate later.
+				if ($signed(input_b) >= 0)
+					result = input_a << input_b;
+				else
+					result = $signed(input_a) >>> (-$signed(input_b));
+			default:
+				result = 16'b0;
 		endcase
 	end
 			
