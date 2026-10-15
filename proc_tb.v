@@ -22,11 +22,38 @@ module proc_tb;
 	 wire [15:0] bus;
 	 wire [15:0] R0, R1, R2, R3, R4, R5, R6, R7;
 	 
-	 reg [20:1] test_result = 20'b0;
+	 localparam NUM_DIRECTED = 20;
+	 localparam NUM_RANDOM   = 500;     // FAQ: recommended minimum 500 cases per task
+	 reg [NUM_DIRECTED+NUM_RANDOM:1] test_result = 0;
 	 integer test_count = 0;
 	 integer pass_count = 0;
 	 integer fail_count = 0;
 	 integer i;
+
+	 // ---- random test campaign: reference model + stimulus ----
+	 reg  [15:0] model [0:7];      // expected value of R0..R7
+	 reg  [31:0] rnd;
+	 reg  [1:0]  op_sel;
+	 reg  [2:0]  rx, ry;
+	 reg  [8:0]  instr, imm;
+	 reg  [15:0] expected;
+	 integer     seed, n, k, mismatches;
+
+	 function [15:0] get_reg;
+		input [2:0] idx;
+		begin
+			case (idx)
+				3'd0: get_reg = R0;
+				3'd1: get_reg = R1;
+				3'd2: get_reg = R2;
+				3'd3: get_reg = R3;
+				3'd4: get_reg = R4;
+				3'd5: get_reg = R5;
+				3'd6: get_reg = R6;
+				default: get_reg = R7;
+			endcase
+		end
+	 endfunction
 	 
 	 simple_proc test_proc(
 		.clk(clk),
@@ -46,7 +73,8 @@ module proc_tb;
 	 task reset_processor;
 	 begin
 		KEY[0] = 1;
-		#10;
+		@(posedge clk);
+		#1;
 		KEY[0] = 0;
 	 end
 	 endtask
@@ -854,9 +882,72 @@ module proc_tb;
 			test_result[20] = 0;
 		end
 		
+		// =====================================================================
+		// RANDOM TEST CAMPAIGN
+		// NUM_RANDOM random instructions (movi / add / addi / sub, random
+		// registers including Rx == Ry, random 9-bit immediates covering the
+		// full -256..255 range). After EVERY instruction all eight registers
+		// are compared with a reference model, so a wrong result, a write to
+		// the wrong register, or an accidental write to another register are
+		// all caught. 16-bit overflow wraps around (two's complement); the
+		// model wraps the same way. Fixed seed -> repeatable run.
+		// =====================================================================
+		seed = 2072;
+		$display("========================");
+		$display("RANDOM TESTS: %0d instructions, seed %0d (only failures are printed)", NUM_RANDOM, seed);
+
+		reset_processor;
+		for (k = 0; k < 8; k = k + 1)
+			model[k] = 16'd0;
+
+		for (n = 1; n <= NUM_RANDOM; n = n + 1) begin
+			rnd    = $random(seed);
+			op_sel = rnd[1:0];
+			rx     = rnd[4:2];
+			ry     = rnd[7:5];
+			imm    = rnd[16:8];
+
+			case (op_sel)
+				2'd0: begin instr = {3'b111, rx, 3'b000}; expected = {{7{imm[8]}}, imm};              end // movi
+				2'd1: begin instr = {3'b001, rx, ry};     expected = model[rx] + model[ry];           end // add
+				2'd2: begin instr = {3'b010, rx, 3'b000}; expected = model[rx] + {{7{imm[8]}}, imm};  end // addi
+				default: begin instr = {3'b011, rx, ry};  expected = model[rx] - model[ry];           end // sub
+			endcase
+
+			// run the instruction through its 4 ticks (same timing as the directed tests)
+			SW = instr;
+			@(posedge clk);
+			SW = imm;
+			@(posedge clk);
+			@(posedge clk);
+			@(posedge clk);
+			#1;
+
+			model[rx] = expected;
+			test_count = test_count + 1;
+			mismatches = 0;
+			for (k = 0; k < 8; k = k + 1)
+				if (get_reg(k) !== model[k])
+					mismatches = mismatches + 1;
+
+			if (mismatches == 0) begin
+				pass_count = pass_count + 1;
+				test_result[test_count] = 1;
+			end
+			else begin
+				fail_count = fail_count + 1;
+				test_result[test_count] = 0;
+				$display("FAIL random #%0d: instr = %b_%b_%b, imm = %0d", n, instr[8:6], instr[5:3], instr[2:0], $signed(imm));
+				for (k = 0; k < 8; k = k + 1)
+					if (get_reg(k) !== model[k])
+						$display("     R%0d = %0d, expected %0d", k, $signed(get_reg(k)), $signed(model[k]));
+			end
+		end
+		$display("RANDOM TESTS done");
+
 		$display("========================");
 		$display("TEST SUMMARY");
-		$display("Total Tests: %d", test_count);
+		$display("Total Tests: %0d (%0d directed + %0d random)", test_count, NUM_DIRECTED, NUM_RANDOM);
 		$display("Total PASS: %d", pass_count);
 		$display("Total FAIL: %d", fail_count);
 		
@@ -865,9 +956,9 @@ module proc_tb;
 		end
 		else begin
 			$display("Failed Tests:");
-			for (i = 1; i <= 20; i = i + 1) begin
+			for (i = 1; i <= test_count; i = i + 1) begin
 				if (test_result[i] == 0) begin
-					$display("Test[%d] FAIL", i);
+					$display("Test[%0d] FAIL", i);
 				end
 			end
 		end

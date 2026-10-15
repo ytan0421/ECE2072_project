@@ -21,6 +21,12 @@ Test plan
                    display HOLDS its value while other instructions run,
                    disp does not change any register, reset clears display.
   E. enable      : enable = 0 freezes the processor, enable = 1 resumes.
+  F. random      : 500 random instructions using ALL seven instructions,
+                   random registers and immediates, checked after every
+                   instruction against a reference model of R0-R7 AND the
+                   display register (FAQ: recommended minimum 500 cases).
+  Overflow: all arithmetic wraps around in 16 bits (two's complement); the
+  reference model wraps the same way, and tests B6 / random tests rely on it.
 
 Instruction encoding used (IR = op[8:6] rx[5:3] ry[2:0]):
   disp 000 | add 001 | addi 010 | sub 011 | mult 100 | ssi 101 | movi 111
@@ -44,7 +50,8 @@ module proc_extension_tb;
 	wire [15:0] display;
 	wire [15:0] R0, R1, R2, R3, R4, R5, R6, R7;
 
-	localparam NUM_TESTS = 40;
+	localparam NUM_RANDOM = 500;
+	localparam NUM_TESTS  = 40 + NUM_RANDOM;
 	reg [NUM_TESTS:1] test_result;
 	integer test_count = 0;
 	integer pass_count = 0;
@@ -186,6 +193,30 @@ module proc_extension_tb;
 			snap[k] = get_reg(k);
 	end
 	endtask
+
+	// ------------------------------------------------------------------
+	// Reference model for the random campaign
+	// ------------------------------------------------------------------
+	reg  [15:0] model [0:7];
+	reg  [15:0] model_display;
+	reg  [31:0] rnd;
+	reg  [2:0]  r_op, r_x, r_y;
+	reg  [8:0]  r_imm;
+	reg  [15:0] imm_ext, expected;
+	integer     seed, n, mismatches;
+	reg  [8*4:1] op_txt;
+
+	// ssi: value shifted by amount (same rule as the ALU's signed shift)
+	function [15:0] shift_model;
+		input [15:0] amount;
+		input [15:0] value;
+	begin
+		if ($signed(amount) >= 0)
+			shift_model = value << amount;
+		else
+			shift_model = $signed(value) >>> (-$signed(amount));
+	end
+	endfunction
 
 	// ------------------------------------------------------------------
 	// Test sequence
@@ -394,10 +425,82 @@ module proc_extension_tb;
 		movi(3'd3, 9'sd77);
 		check("R3", R3, 16'sd77);
 
+		// ============ F. random campaign ============
+		seed = 2072;
+		$display("--- F. RANDOM: %0d instructions, seed %0d (only failures are printed) ---", NUM_RANDOM, seed);
+		EN = 1'b1;
+		reset_processor;
+		for (k = 0; k < 8; k = k + 1) model[k] = 16'd0;
+		model_display = 16'd0;
+
+		for (n = 1; n <= NUM_RANDOM; n = n + 1) begin
+			rnd = $random(seed);
+			r_x = rnd[2:0];
+			r_y = rnd[5:3];
+			// pick one of the 7 instructions with equal probability
+			case ({1'b0, rnd[31:8]} % 7)
+				0: r_op = OP_MOVI;
+				1: r_op = OP_ADD;
+				2: r_op = OP_ADDI;
+				3: r_op = OP_SUB;
+				4: r_op = OP_MULT;
+				5: r_op = OP_SSI;
+				default: r_op = OP_DISP;
+			endcase
+			// immediates: full 9-bit range, except ssi uses -20..+20 so shifts are meaningful
+			if (r_op == OP_SSI)
+				r_imm = ($random(seed) % 21);
+			else
+				r_imm = $random(seed);
+			imm_ext = {{7{r_imm[8]}}, r_imm};
+
+			case (r_op)
+				OP_MOVI: begin op_txt = "movi"; expected = imm_ext;                         end
+				OP_ADD:  begin op_txt = "add "; expected = model[r_x] + model[r_y];         end
+				OP_ADDI: begin op_txt = "addi"; expected = model[r_x] + imm_ext;            end
+				OP_SUB:  begin op_txt = "sub "; expected = model[r_x] - model[r_y];         end
+				OP_MULT: begin op_txt = "mult"; expected = model[r_x] * model[r_y];         end
+				OP_SSI:  begin op_txt = "ssi "; expected = shift_model(imm_ext, model[r_x]); end
+				default: begin op_txt = "disp"; expected = model[r_x];                      end
+			endcase
+
+			if (r_op == OP_MOVI || r_op == OP_ADDI || r_op == OP_SSI)
+				run_instr({r_op, r_x, 3'b000}, r_imm);
+			else if (r_op == OP_DISP)
+				run_instr({r_op, r_x, 3'b000}, 9'd0);
+			else
+				run_instr({r_op, r_x, r_y}, 9'd0);
+
+			if (r_op == OP_DISP) model_display = expected;   // disp writes H only
+			else                 model[r_x]    = expected;
+
+			test_count = test_count + 1;
+			mismatches = 0;
+			for (k = 0; k < 8; k = k + 1)
+				if (get_reg(k) !== model[k]) mismatches = mismatches + 1;
+			if (display !== model_display) mismatches = mismatches + 1;
+
+			if (mismatches == 0) begin
+				pass_count = pass_count + 1;
+				test_result[test_count] = 1;
+			end
+			else begin
+				fail_count = fail_count + 1;
+				test_result[test_count] = 0;
+				$display("FAIL random #%0d: %0s r%0d, r%0d / imm %0d", n, op_txt, r_x, r_y, $signed(r_imm));
+				for (k = 0; k < 8; k = k + 1)
+					if (get_reg(k) !== model[k])
+						$display("     R%0d = %0d, expected %0d", k, $signed(get_reg(k)), $signed(model[k]));
+				if (display !== model_display)
+					$display("     display = %0d, expected %0d", $signed(display), $signed(model_display));
+			end
+		end
+		$display("--- F. RANDOM done ---");
+
 		// ============ Summary ============
 		$display("========================");
 		$display("TEST SUMMARY");
-		$display("Total Tests: %0d", test_count);
+		$display("Total Tests: %0d (%0d directed + %0d random)", test_count, test_count - NUM_RANDOM, NUM_RANDOM);
 		$display("Total PASS : %0d", pass_count);
 		$display("Total FAIL : %0d", fail_count);
 
